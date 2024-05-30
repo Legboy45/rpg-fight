@@ -2,6 +2,9 @@ namespace SpriteKind {
     export const Cam = SpriteKind.create()
     export const Target = SpriteKind.create()
 }
+namespace StatusBarKind {
+    export const Damage = StatusBarKind.create()
+}
 function InventoryCreation () {
     WeaponsArmorInventory = Inventory.create_inventory([], 16)
     WeaponsArmorInventory.set_color(InventoryColorAttribute.InventoryOutline, 15)
@@ -112,7 +115,6 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
     if (PlayersTurn) {
         if (SelectedAction.get_text(ItemTextAttribute.Name) == "Attack") {
             if (PlayerTarget.overlapsWith(TargetedEnemy)) {
-                PlayerTarget.setFlag(SpriteFlag.Invisible, false)
                 if (Math.percentChance(CritChance)) {
                     statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, TargetedEnemy).value += -1 * (Damage * CritDamage)
                     scene.cameraShake(2, 500)
@@ -418,11 +420,11 @@ function Stats () {
     Money = 0
     Targeting = 1
     PlayerLevel = 1
-    Damage = 2
     CritChance = 5
     CritDamage = 1.5
     FleeChance = 20
-    Defense = 0
+    Defense = 4
+    Damage = 2
 }
 sprites.onOverlap(SpriteKind.Target, SpriteKind.Enemy, function (sprite, otherSprite) {
     TargetedEnemy = otherSprite
@@ -433,7 +435,7 @@ function LevelCreation () {
     grid.place(PlayerTarget, tiles.getTileLocation(11, 8))
     tiles.placeOnRandomTile(mySprite, sprites.castle.tileGrass2)
     tiles.placeOnRandomTile(cam, assets.tile`myTile`)
-    for (let index = 0; index <= AmountsOfEnemys; index++) {
+    for (let index = 0; index < AmountsOfEnemys; index++) {
         EnemyTypes = [
         sprites.create(img`
             . . . f f f f f . . . . . . . . 
@@ -494,19 +496,19 @@ function LevelCreation () {
             . . . . . . . . . . . . . . . . 
             . . . . . . . . . . . . . . . . 
             . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            . . . . . . . . . . . . . . . . 
-            `, SpriteKind.Player)
+            . . . . . . . f f f f f . . . . 
+            . . . . . f f 9 9 9 9 7 f . . . 
+            . . . . f f 9 7 7 7 7 7 6 f . . 
+            . . . . f 9 7 7 7 7 7 7 6 f . . 
+            . f f f f f 7 7 7 7 7 6 6 f . . 
+            f f 9 9 9 9 7 7 7 7 7 f f f . . 
+            f 9 7 7 7 7 7 7 7 7 7 7 7 f f . 
+            f 9 7 7 7 f f 7 7 7 7 7 7 7 f . 
+            f 9 7 7 7 f f 7 7 f f 7 7 7 6 f 
+            f 9 7 7 7 7 7 7 7 f f 7 7 7 6 f 
+            f f f 7 7 7 7 7 7 7 7 7 7 6 6 f 
+            . . f f f 6 6 6 6 6 6 6 6 6 f . 
+            `, SpriteKind.Enemy)
         ]
         EnemyGuy = EnemyTypes._pickRandom()
         tiles.placeOnRandomTile(EnemyGuy, sprites.castle.tileDarkGrass2)
@@ -525,6 +527,9 @@ function LevelCreation () {
         } else if (EnemyHP.spriteAttachedTo() == EnemyTypes[2]) {
             statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, EnemyHP.spriteAttachedTo()).max = 7
             statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, EnemyHP.spriteAttachedTo()).value = 7
+        } else if (EnemyHP.spriteAttachedTo() == EnemyTypes[3]) {
+            statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, EnemyHP.spriteAttachedTo()).max = 2
+            statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, EnemyHP.spriteAttachedTo()).value = 2
         } else {
             statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, EnemyHP.spriteAttachedTo()).max = 3
             statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, EnemyHP.spriteAttachedTo()).value = 3
@@ -534,8 +539,8 @@ function LevelCreation () {
 function Variables () {
     Stats()
     InAFight = true
-    AmountsOfEnemys = randint(1, 2)
-    CurrentEnemysInFight = AmountsOfEnemys + 1
+    AmountsOfEnemys = randint(1, 3)
+    CurrentEnemysInFight = AmountsOfEnemys
     PlayersTurn = true
     comsumableinventoryinvisible = true
     Level = 0
@@ -584,11 +589,187 @@ game.onUpdate(function () {
 })
 game.onUpdate(function () {
     if (!(PlayersTurn)) {
+        timer.after(350, function () {
+            if (CurrentEnemysInFight == 3) {
+                HP.value += Math.round(Damage / Defense) * -1
+                ActionDisplayer.setText("Took " + Math.round(Damage / Defense) + " dmg")
+                timer.after(100, function () {
+                    HP.value += Math.round(Damage / Defense) * -1
+                    ActionDisplayer.setText("Took " + Math.round(-1 / Defense) + " dmg")
+                    timer.after(100, function () {
+                        HP.value += Math.round(Damage / Defense) * -1
+                        ActionDisplayer.setText("Took " + Math.round(Damage / Defense) + " dmg")
+                    })
+                })
+            } else if (CurrentEnemysInFight == 2) {
+                HP.value += Math.round(Damage / Defense) * -1
+                ActionDisplayer.setText("Took " + Math.round(Damage / Defense) + " dmg")
+                timer.after(100, function () {
+                    HP.value += Math.round(Damage / Defense) * -1
+                    ActionDisplayer.setText("Took " + Math.round(Damage / Defense) + " dmg")
+                })
+            } else if (CurrentEnemysInFight == 1) {
+                HP.value += Math.round(Damage / Defense) * -1
+                ActionDisplayer.setText("Took " + Math.round(Damage / Defense) + " dmg")
+            }
+        })
+        PlayerTarget.setFlag(SpriteFlag.Invisible, true)
         PlayersTurn = true
+    } else {
+        timer.after(750, function () {
+            PlayerTarget.setFlag(SpriteFlag.Invisible, false)
+        })
     }
     if (CurrentEnemysInFight == 0) {
         timer.after(1500, function () {
             game.gameOver(true)
+        })
+    }
+    if (HP.value <= 0) {
+        animation.runImageAnimation(
+        mySprite,
+        [img`
+            . . . . . . . . f f f f f . . . 
+            . . . . . . . f f 7 7 7 f f . . 
+            . . . . f f f f f 7 7 7 7 f . . 
+            . . . f 7 7 7 7 7 7 7 7 f f . . 
+            . . f 6 7 7 7 7 7 7 7 6 f . . . 
+            . . f 6 7 7 6 6 6 6 6 f f . . . 
+            . . f f 6 6 f c c f c f . . . . 
+            . . . f f c e e e e e f . . . . 
+            . . . . f c e f f e e f . . . . 
+            . . . . f c e e e e e f . . . . 
+            . . . . . f f f f f f . . . . . 
+            . . . . f e e e e e e f . . . . 
+            . . . f c f e e e e f c f . . . 
+            . . . f f f e e e e f f f . . . 
+            . . . . . f c f f c f . . . . . 
+            . . . . . f f f f f f . . . . . 
+            `,img`
+            . . . . . . . . f f f f f . . . 
+            . . . . . . . f f 7 7 7 f f . . 
+            . . . . f f f f f 7 7 7 7 f . . 
+            . . . f 7 7 7 7 7 7 7 7 f f . . 
+            . . f 6 7 7 7 7 7 7 7 6 f . . . 
+            . . f 6 7 7 6 6 6 6 6 f f . . . 
+            . . f f 6 6 f c c f c f . . . . 
+            . . . f f c e e e e e f . . . . 
+            . . . . f c e f f e . f . . . . 
+            . . . . f c e e e e e f . . . . 
+            . . . . . f f f f f f . . . . . 
+            . . . . f e e . e . e f . . . . 
+            . . . . c f e e e e f c f . . . 
+            . . . f f f e . e e f f f . . . 
+            . . . . . f c f f c . . . . . . 
+            . . . . . f f f f f f . . . . . 
+            `,img`
+            . . . . . . . . f f f f f . . . 
+            . . . . . . . f f 7 7 7 f f . . 
+            . . . . f f f f f 7 7 7 7 f . . 
+            . . . f 7 7 7 7 7 7 7 7 f f . . 
+            . . f 6 7 7 7 7 7 7 7 6 f . . . 
+            . . f 6 7 7 6 6 6 6 6 f f . . . 
+            . . f f 6 6 f . c . c f . . . . 
+            . . . f f c . e e e e f . . . . 
+            . . . . f c . f f e . f . . . . 
+            . . . . f c e e e e e f . . . . 
+            . . . . . . f f f f f . . . . . 
+            . . . . f e e . e . e f . . . . 
+            . . . . c . e e e e f c f . . . 
+            . . . f f f e . e e f f f . . . 
+            . . . . . f c f f c . . . . . . 
+            . . . . . f f f f f f . . . . . 
+            `,img`
+            . . . . . . . . f f f f f . . . 
+            . . . . . . . f f 7 7 7 f f . . 
+            . . . . f f f f f 7 7 7 7 f . . 
+            . . . f 7 7 7 7 7 7 7 7 f f . . 
+            . . f 6 7 7 7 7 7 7 7 6 f . . . 
+            . . f 6 7 7 6 6 6 6 6 f f . . . 
+            . . f f 6 6 f f f f f f . . . . 
+            . . . f f f . e e e e f . . . . 
+            . . . . f c . . . e . f . . . . 
+            . . . . f c e e . . e f . . . . 
+            . . . . . . f f f . f . . . . . 
+            . . . . f e e . e . . f . . . . 
+            . . . . c . e e e e . c f . . . 
+            . . . f f . . . e . . f f . . . 
+            . . . . . f . . . . . . . . . . 
+            . . . . . f f f f f f . . . . . 
+            `,img`
+            . . . . . . . . f f f f f . . . 
+            . . . . . . . f f 7 7 7 f f . . 
+            . . . . f f f f f 7 7 7 7 f . . 
+            . . . f 7 7 7 7 7 7 7 7 f f . . 
+            . . f 6 7 7 7 7 7 7 7 6 f . . . 
+            . . f 6 7 7 6 6 6 6 6 f f . . . 
+            . . f f 6 6 f f f f f f . . . . 
+            . . . f f f . e e e . . . . . . 
+            . . . . f c . . . . . f . . . . 
+            . . . . f c e . . . e f . . . . 
+            . . . . . . . . f . f . . . . . 
+            . . . . . e e . e . . . . . . . 
+            . . . . . . e e e e . . f . . . 
+            . . . f . . . . e . . . . . . . 
+            . . . . . f . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            `,img`
+            . . . . . . . . f f f f f . . . 
+            . . . . . . . f f 7 7 7 f f . . 
+            . . . . f f f f f 7 7 7 7 f . . 
+            . . . f 7 7 7 7 7 7 7 7 f f . . 
+            . . f 6 7 7 7 7 7 7 7 6 f . . . 
+            . . f 6 7 7 6 6 6 6 6 f f . . . 
+            . . f f 6 6 f f f f f f . . . . 
+            . . . f f f . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            `,img`
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . f f f f f . . . 
+            . . . . . . . f f 7 7 7 f f . . 
+            . . . . f f f f f 7 7 7 7 f . . 
+            . . . f 7 7 7 7 7 7 7 7 f f . . 
+            . . f 6 7 7 7 7 7 7 7 6 f . . . 
+            . . f 6 7 7 6 6 6 6 6 f f . . . 
+            . . f f 6 6 f f f f f f . . . . 
+            . . . f f f . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            `,img`
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . . . . . . . . . 
+            . . . . . . . . f f f f f . . . 
+            . . . . . . . f f 7 7 7 f f . . 
+            . . . . f f f f f 7 7 7 7 f . . 
+            . . . f 7 7 7 7 7 7 7 7 f f . . 
+            . . f 6 7 7 7 7 7 7 7 6 f . . . 
+            . . f 6 7 7 6 6 6 6 6 f f . . . 
+            . . f f 6 6 f f f f f f . . . . 
+            `],
+        150,
+        false
+        )
+        timer.after(1300, function () {
+            game.gameOver(false)
         })
     }
 })
